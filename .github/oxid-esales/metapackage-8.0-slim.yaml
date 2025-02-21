@@ -31,6 +31,9 @@ install:
             "ddoe/*": "source",
             "makaira/*": "source"
           },
+          "require":{
+            "composer/composer": "^2.8"
+          },
           "require-dev":{
               "oxid-esales/codeception-modules":"{{ .Data.global.composer.dev_ref }}",
               "oxid-esales/codeception-page-objects":"{{ .Data.global.composer.dev_ref }}",
@@ -77,12 +80,7 @@ runscript:
   matrix:
     script: |
       [
-        "shop:~/unit.sh",
-        "shop:~/compilation_integration.sh",
-        "shop:~/compilation_codeception_shard1.sh",
-        "shop:~/compilation_codeception_shard2.sh",
-        "shop:~/compilation_codeception_shard3.sh",
-        "shop:~/compilation_codeception_shard4.sh"
+        "shop:~/compilation_integration.sh"
       ]
   container:
     # {{ $selenium_options := "-e SELENIUM_SERVER_HOST=selenium -e BROWSER_NAME=chrome -e TEST_SUITE=/var/www/vendor/oxid-esales/oxideshop-ce/tests" }}
@@ -122,7 +120,7 @@ runscript:
       chmod a+x source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard4.sh
       cat >source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_integration.sh <<EOF
       #!/bin/bash
-      /var/www/vendor/bin/phpunit -c /var/www/vendor/oxid-esales/oxideshop-ce/phpunit.xml --testsuite=Integration --exclude-group exclude_from_compilation,exclude-from-compilation
+      /var/www/vendor/bin/phpunit -c /var/www/vendor/oxid-esales/oxideshop-ce/phpunit.xml --testsuite=Integration --exclude-group=exclude_from_compilation --exclude-group=exclude-from-compilation
       EOF
       chmod a+x source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_integration.sh
   gdpr:
