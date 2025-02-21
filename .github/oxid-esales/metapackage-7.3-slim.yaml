@@ -28,9 +28,6 @@ install:
             "ddoe/*": "source",
             "makaira/*": "source"
           },
-          "require": {
-            "twig/twig": "v3.8.0"
-          },
           "require-dev":{
               "oxid-esales/codeception-modules":"{{ .Data.global.composer.dev_ref }}",
               "oxid-esales/codeception-page-objects":"{{ .Data.global.composer.dev_ref }}",
