@@ -1,22 +1,20 @@
 install:
+  git:
+    sdk_ref: b-8.0.x
+  add_services: 'selenium-chrome-126'
   method: 'script'
+  script: './.github/oxid-esales/install.sh'
   copy_script_targets: |
     vendor/oxid-esales/oxideshop-ce/tests/scripts
-    vendor/oxid-esales/gdpr-optin-module/tests/scripts
-    vendor/oxid-professional-services/usercentrics/tests/scripts
-    vendor/makaira/oxid-connect-essential/tests/scripts
-    vendor/ddoe/wysiwyg-editor-module/tests/scripts
-    vendor/oxid-esales/media-library-module/tests/scripts
     vendor/oxid-esales/oxideshop-composer-plugin/tests/scripts
     vendor/oxid-esales/oxideshop-demodata-installer/tests/scripts
     vendor/oxid-esales/oxideshop-doctrine-migration-wrapper/tests/scripts
-    vendor/oxid-esales/oxideshop-facts/tests/scripts
     vendor/oxid-esales/twig-component/tests/scripts
     vendor/oxid-esales/oxideshop-unified-namespace-generator/tests/scripts
   container:
     options: '-e ESHOP_BOOTSTRAP_PATH=vendor/oxid-esales/oxideshop-ce/source/bootstrap.php'
   composer:
-    root_url: 'https://raw.githubusercontent.com/{{ .Github.Repository }}/b-8.0/composer.json'
+    root_url: 'https://raw.githubusercontent.com/{{ .Github.Repository }}/b-8.0-update-workflows-OXDEV-9158/composer.json'
     transform: |
       {
           "config": {
@@ -40,15 +38,17 @@ install:
               "oxid-esales/oxideshop-ide-helper":"{{ .Data.global.composer.dev_ref }}",
               "codeception/codeception":"^5.0",
               "codeception/module-asserts":"^3.0",
-              "codeception/module-db":"3.1.0",
+              "codeception/module-db":"^3.0",
               "codeception/module-filesystem":"^3.0",
               "codeception/module-webdriver":"^4.0",
               "composer/composer":"^2.0",
               "incenteev/composer-parameter-handler":"^v2.1.4",
               "mikey179/vfsstream":"~1.6.8",
               "phpspec/prophecy-phpunit":"^v2.0.1",
-              "phpunit/phpunit":"^10.4",
-              "squizlabs/php_codesniffer":"^3.5.4"
+              "phpunit/phpunit":"^11.4",
+              "squizlabs/php_codesniffer":"^3.5.4",
+              "symfony/browser-kit": "^6.4",
+              "symfony/http-client": "^6.4"
           },
           "autoload-dev":{
               "psr-4":{
@@ -57,79 +57,86 @@ install:
                 "OxidEsales\\UnifiedNameSpaceGenerator\\Tests\\": "./vendor/oxid-esales/oxideshop-unified-namespace-generator/tests",
                 "OxidEsales\\DemoDataInstaller\\Tests\\": "./vendor/oxid-esales/oxideshop-demodata-installer/tests/",
                 "OxidEsales\\DoctrineMigrationWrapper\\Tests\\": "./vendor/oxid-esales/oxideshop-doctrine-migration-wrapper/tests",
-                "OxidEsales\\Facts\\Tests\\": "./vendor/oxid-esales/oxideshop-facts/tests/",
-                "OxidEsales\\Twig\\Tests\\": "./vendor/oxid-esales/twig-component/tests",
-                "OxidEsales\\GdprOptinModule\\Tests\\": "./vendor/oxid-esales/gdpr-optin-module/tests/",
-                "OxidProfessionalServices\\Usercentrics\\Tests\\": "./vendor/oxid-professional-services/usercentrics/tests"
+                "OxidEsales\\Twig\\Tests\\": "./vendor/oxid-esales/twig-component/tests"
               }
           },
           "bin":[
               "bin/oe-console"
           ],
           "config":{
+              "github-protocols": ["https"],
               "allow-plugins":{
                 "oxid-esales/oxideshop-composer-plugin":true,
                 "oxid-esales/oxideshop-unified-namespace-generator":true
               }
           }
       }
-  activate_modules: |
-    oegdproptin
-    oxps_usercentrics
-  custom_script: |
-    # Copy test scripts for components/modules that are not yet using them
-    for MODULE in oxid-esales/oxideshop-demodata-installer \
-                  oxid-esales/oxideshop-doctrine-migration-wrapper \
-                  oxid-esales/oxideshop-facts \
-                  oxid-esales/oxideshop-unified-namespace-generator
-    do
-      if [ ! -f "source/vendor/${MODULE}/tests/phpunit.xml" ]; then
-        echo -e "\033[0;35mcopying generic phpunit10.xml to 'source/vendor/${MODULE}/tests/phpunit.xml'\033[0m"
-        cp ".github/oxid-esales/defaults/scripts/phpunit10.xml" "source/vendor/${MODULE}/tests/phpunit.xml"
-      fi
-    done
-  custom_script_container: |
-    # Activate all modules
-    if [ -f 'bin/oe-console' ]; then
-        OE_CONSOLE='bin/oe-console'
-    else
-        if [ -f 'vendor/bin/oe-console' ]; then
-        OE_CONSOLE='vendor/bin/oe-console'
-        else
-            error "Can't find oe-console in bin or vendor/bin!"
-        fi
-    fi
-    ${OE_CONSOLE} oe:setup:demodata
+  activate_modules: ''
 
-runscript: &runscript
+runscript:
   matrix:
     script: |
       [
         "shop:~/unit.sh",
-        "shop:~/integration.sh",
-        "shop:~/codeception.sh",
-        "gdpr:~/unit.sh",
-        "gdpr:~/integration.sh",
-        "gdpr:~/codeception.sh",
-        "usercentrics:~/unit.sh",
-        "usercentrics:~/integration.sh",
-        "usercentrics:~/codeception.sh Acceptance"
+        "shop:~/compilation_integration.sh",
+        "shop:~/compilation_codeception_shard1.sh",
+        "shop:~/compilation_codeception_shard2.sh",
+        "shop:~/compilation_codeception_shard3.sh",
+        "shop:~/compilation_codeception_shard4.sh"
       ]
   container:
-    # {{ $selenium_options := "-e SELENIUM_SERVER_HOST=selenium -e BROWSER_NAME=chrome" }}
-    # {{ $module_ids := "-e MODULE_IDS=oegdproptin,oxps_usercentrics,makaira_oxid-connect-essential,ddoewysiwyg" }}
-    options: '-e XDEBUG_MODE=coverage -e THEME_ID=apex {{ $selenium_options }} {{ $module_ids }}'
+    # {{ $selenium_options := "-e SELENIUM_SERVER_HOST=selenium -e BROWSER_NAME=chrome -e TEST_SUITE=/var/www/vendor/oxid-esales/oxideshop-ce/tests" }}
+    # {{ $module_ids := "-e MODULE_IDS=eyeable_assist,makaira_oxid-connect-essential,oxps_usercentrics,oegdproptin,ddoemedialibrary,ddoewysiwyg" }}
+    # {{ $integration_options := "-e INTEGRATION_OPTIONS=--exclude-group=exclude_from_compilation,exclude-from-compilation" }}
+    options: '-e XDEBUG_MODE=coverage -e THEME_ID=apex {{ $module_ids }} {{ $selenium_options }} {{ $integration_options }} '
   composer:
     early: skip
   workdir: ''
   shop:
     path: 'vendor/oxid-esales/oxideshop-ce'
     workdir: 'vendor/oxid-esales/oxideshop-ce'
+    custom_script: |
+      cat >source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard1.sh <<EOF
+      #!/bin/bash
+      /var/www/vendor/bin/codecept build -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml
+      /var/www/vendor/bin/codecept run Acceptance --bootstrap=/var/www/source/bootstrap.php  -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml -x exclude_from_compilation --shard 1/4
+      EOF
+      chmod a+x source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard1.sh
+      cat >source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard2.sh <<EOF
+      #!/bin/bash
+      /var/www/vendor/bin/codecept build -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml
+      /var/www/vendor/bin/codecept run Acceptance --bootstrap=/var/www/source/bootstrap.php  -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml -x exclude_from_compilation --shard 2/4
+      EOF
+      chmod a+x source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard2.sh
+      cat >source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard3.sh <<EOF
+      #!/bin/bash
+      /var/www/vendor/bin/codecept build -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml
+      /var/www/vendor/bin/codecept run Acceptance --bootstrap=/var/www/source/bootstrap.php  -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml -x exclude_from_compilation --shard 3/4
+      EOF
+      chmod a+x source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard3.sh
+      cat >source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard4.sh <<EOF
+      #!/bin/bash
+      /var/www/vendor/bin/codecept build -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml
+      /var/www/vendor/bin/codecept run Acceptance --bootstrap=/var/www/source/bootstrap.php  -c /var/www/vendor/oxid-esales/oxideshop-ce/tests/codeception.yml -x exclude_from_compilation --shard 4/4
+      EOF
+      chmod a+x source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_codeception_shard4.sh
+      cat >source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_integration.sh <<EOF
+      #!/bin/bash
+      /var/www/vendor/bin/phpunit -c /var/www/vendor/oxid-esales/oxideshop-ce/phpunit.xml --testsuite=Integration --exclude-group exclude_from_compilation,exclude-from-compilation
+      EOF
+      chmod a+x source/vendor/oxid-esales/oxideshop-ce/tests/scripts/compilation_integration.sh
   gdpr:
     path: 'vendor/oxid-esales/gdpr-optin-module'
-    workdir: 'vendor/oxid-esales/gdpr-optin-module'
   usercentrics:
     path: 'vendor/oxid-professional-services/usercentrics'
+  makaira:
+    path: 'vendor/makaira/oxid-connect-essential'
+  ddoe_wysiwyg:
+    path: 'vendor/ddoe/wysiwyg-editor-module'
+  medialibrary:
+    path: 'vendor/oxid-esales/media-library-module'
+  eyeable:
+    path: 'vendor/eyeable/eye-able-oxid'
 
 sonarcloud:
   matrix:
